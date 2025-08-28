@@ -1,0 +1,25 @@
+services:
+  selenium:
+    image: selenium/standalone-firefox:latest
+    container_name: selenium-firefox
+    ports:
+      - "4444:4444"
+      - "7900:7900"
+    restart: unless-stopped
+    environment:
+      - SE_NODE_SESSION_TIMEOUT=300
+      - SE_SESSION_REQUEST_TIMEOUT=300
+      - SE_NODE_HEARTBEAT_PERIOD=30
+      - SE_NODE_MAX_SESSIONS=5
+    shm_size: 2gb
+    volumes:
+      - /dev/shm:/dev/shm
+    # Use the default network (created below with MTU 1450)
+    networks:
+      - default
+
+networks:
+  default:
+    driver: bridge
+    driver_opts:
+      com.docker.network.driver.mtu: "1450"

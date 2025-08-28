@@ -1,0 +1,28 @@
+# Pool Scout Pro Configuration
+
+# Database settings
+database:
+  path: "data/reports.db"
+  backup_path: "data/backups/"
+
+# Browser automation settings  
+browser:
+  driver: "firefox"
+  headless: true
+  timeout: 30
+  implicit_wait: 10
+
+# EMD website settings
+emd:
+  base_url: "https://publichealth.saccounty.net/Pages/EH-FoodProtection-PoolSpa-SearchResults.aspx"
+  search_timeout: 60
+
+# Download settings
+downloads:
+  directory: "data/reports/2025/"
+  timeout: 120
+  
+# Logging
+logging:
+  level: "INFO"
+  file: "data/logs/app.log"

@@ -1,0 +1,12 @@
+  def _is_inspection_saved(self, inspection_id):
+      """
+      Check if inspection ID already exists in database.
+      """
+      try:
+          conn = sqlite3.connect('data/reports.db', timeout=10)
+          cursor = conn.cursor()
+          cursor.execute("SELECT COUNT(*) FROM inspection_reports WHERE inspection_id = ?", (inspection_id,))
+          count = cursor.fetchone()[0]
+          conn.close()
+          return count > 0
+      except Exception as e:

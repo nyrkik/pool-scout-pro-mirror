@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head><title>Debug Test</title></head>
+<body>
+<span id="on-file-count">0</span>
+<script>
+console.log('Testing element finding...');
+const element = document.getElementById('on-file-count');
+console.log('Element found:', element);
+if (element) {
+    element.textContent = '28';
+    console.log('Set to 28, current value:', element.textContent);
+} else {
+    console.log('Element NOT found');
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pool Scout Pro - Sacramento County Pool Inspection Reports</title>
+  <meta name="description" content="Sacramento County pool inspection reports search and management system">
+  <link rel="stylesheet" href="/static/css/search_reports.css">
+  <script src="/static/js/vendor/lucide.js"></script>
+</head>
+<body>
+  <nav class="navbar-modern" role="navigation" aria-label="Main navigation">
+      <div class="nav-container-modern">
+          <div class="nav-brand-modern">
+              <div class="brand-icon">
+                  <i data-lucide="waves" class="brand-icon-svg" aria-hidden="true"></i>
+              </div>
+              <div class="brand-text">
+                  <h1>Pool Scout Pro</h1>
+                  <span class="brand-subtitle">Sacramento County</span>
+              </div>
+          </div>
+
+          <ul class="nav-menu-modern" role="menubar">
+              <li class="nav-item-modern" role="none">
+                  <a href="/reports" class="nav-link-modern active" role="menuitem" aria-current="page">
+                      <div class="nav-icon">
+                          <i data-lucide="file-text" class="nav-icon-svg" aria-hidden="true"></i>
+                      </div>
+                      <span class="nav-text">Reports</span>
+                      <div class="nav-indicator" aria-hidden="true"></div>
+                  </a>
+              </li>
+              <li class="nav-item-modern" role="none">
+                  <a href="/dashboard" class="nav-link-modern" role="menuitem">
+                      <div class="nav-icon">
+                          <i data-lucide="bar-chart-3" class="nav-icon-svg" aria-hidden="true"></i>
+                      </div>
+                      <span class="nav-text">Analytics</span>
+                      <div class="nav-indicator" aria-hidden="true"></div>
+                  </a>
+              </li>
+              <li class="nav-item-modern" role="none">
+                  <a href="/business" class="nav-link-modern" role="menuitem">
+                      <div class="nav-icon">
+                          <i data-lucide="building-2" class="nav-icon-svg" aria-hidden="true"></i>
+                      </div>
+                      <span class="nav-text">Business</span>
+                      <div class="nav-indicator" aria-hidden="true"></div>
+                  </a>
+              </li>
+          </ul>
+
+          <button class="nav-toggle-modern" aria-label="Toggle navigation menu" aria-expanded="false">
+              <div class="hamburger-modern">
+                  <span class="hamburger-line" aria-hidden="true"></span>
+                  <span class="hamburger-line" aria-hidden="true"></span>
+                  <span class="hamburger-line" aria-hidden="true"></span>
+              </div>
+          </button>
+      </div>
+  </nav>
+
+  <main class="container" role="main">
+      <section class="search-and-header-container" aria-label="Search controls and results summary">
+          <div class="search-controls">
+              <div class="search-controls-header">
+                  <div class="header-left">
+                      <h2 id="search-title">Report Search</h2>
+                      <div class="search-form" role="search">
+                          <label for="searchDate" class="sr-only">Search date</label>
+                          <input type="date"
+                                 id="searchDate"
+                                 class="form-control-refined"
+                                 aria-describedby="date-help"
+                                 required>
+                          <span id="date-help" class="sr-only">Select inspection date to search for reports</span>
+
+                          <button id="searchButton"
+                                  class="btn btn-primary search-btn-refined"
+                                  type="button"
+                                  aria-describedby="search-status">
+                              <i data-lucide="search" aria-hidden="true"></i>
+                              <span>Search</span>
+                          </button>
+
+                          <input type="hidden" id="purposeSelect" value="inspection">
+                      </div>
+                  </div>
+              </div>
+
+              <div class="results-summary" role="status" aria-live="polite">
+                  <div class="results-left">
+                      <div class="results-count" aria-label="Search results summary">
+                          <span>Unsaved:</span>
+                          <span id="results-count" aria-label="Number of unsaved facilities">0</span>
+                      </div>
+                      <div class="results-count">
+                          <span>Saved:</span>
+                          <span id="on-file-count"  aria-label="Number of saved reports">0</span>
+                      </div>
+                      <div class="search-date">
+                          <span>Date:</span>
+                          <span id="current-search-date" aria-label="Current search date">-</span>
+                      </div>
+                  </div>
+
+                  <!-- Unified Progress Component -->
+                  <div id="header-progress" class="header-progress" style="display: none;">
+                      <div class="progress-inline">
+                          <div id="header-message" class="header-message"></div>
+                          <div id="header-activity" class="header-activity" style="display: none;">
+                              <i data-lucide="loader" class="activity-icon spin"></i>
+                              <span class="activity-percent"></span>
+                          </div>
+                      </div>
+                  </div>
+              </div>
+          </div>
+
+          <div class="table-header-container">
+              <table class="table table-header-only" role="table" aria-label="Reports table header">
+                  <thead>
+                      <tr role="row">
+                          <th scope="col" class="col-number"></th>
+                          <th scope="col" class="col-type"></th>
+                          <th scope="col" class="col-facility">Facility</th>
+                          <th scope="col" class="col-findings">Findings</th>
+                      </tr>
+                  </thead>
+              </table>
+          </div>
+      </section>
+
+      <section class="results-container" aria-label="Search results" aria-describedby="search-title">
+          <div class="table-responsive">
+              <table class="table table-striped table-body-only"
+                     role="table"
+                     aria-label="Inspection reports data">
+                  <tbody id="reports-table-body" role="rowgroup">
+                      <tr class="no-results" role="row">
+                          <td colspan="4"
+                              class="text-center text-muted"
+                              headers="col-number col-type col-facility col-findings">
+                              <div class="no-results-content">
+                                  <p>🔍 No search performed yet</p>
+                                  <p class="help-text">Select a date and click Search to find inspection reports</p>
+                              </div>
+                          </td>
+                      </tr>
+                  </tbody>
+              </table>
+          </div>
+      </section>
+
+      <div id="loading-overlay" class="loading-overlay" style="display: none;" aria-hidden="true">
+          <div class="loading-spinner">
+              <div class="spinner"></div>
+              <p>Loading...</p>
+          </div>
+      </div>
+  </main>
+
+  <footer class="page-footer" role="contentinfo">
+      <div class="footer-content">
+          <p>&copy; 2025 Pool Scout Pro | Sacramento County Pool Inspection Tool</p>
+          <p class="footer-links">
+              <a href="#" onclick="showAbout()" aria-label="About Pool Scout Pro">About</a> |
+              <a href="#" onclick="showHelp()" aria-label="Help and documentation">Help</a> |
+              <a href="#" onclick="showSettings()" aria-label="Application settings">Settings</a>
+          </p>
+      </div>
+  </footer>
+
+  <style>
+      .sr-only {
+          position: absolute;
+          width: 1px;
+          height: 1px;
+          padding: 0;
+          margin: -1px;
+          overflow: hidden;
+          clip: rect(0, 0, 0, 0);
+          white-space: nowrap;
+          border: 0;
+      }
+
+      .help-text {
+          font-size: 14px;
+          margin-top: 8px;
+          opacity: 0.7;
+      }
+  </style>
+
+  <script>
+      window.poolScoutPro = {
+          modules: {},
+          config: {
+              apiBase: '/api/v1',
+              pollInterval: 2000,
+              maxRetries: 3
+          }
+      };
+  </script>
+
+  <script src="/static/js/core/utilities.js"></script>
+  <script src="/static/js/core/api-client.js"></script>
+  <script src="/static/js/core/ui-manager.js"></script>
+  <script src="/static/js/core/page-state-service.js"></script>
+  <script src="/static/js/core/violation-modal.js"></script>
+
+  <script src="/static/js/downloads/download-service.js"></script>
+  <script src="/static/js/downloads/download-ui.js"></script>
+  <script src="/static/js/downloads/download-poller.js"></script>
+
+  <script src="/static/js/search/search-service.js"></script>
+  <script src="/static/js/search/search-ui.js"></script>
+
+  <script src="/static/js/main.js"></script>
+
+  <script>
+      document.addEventListener('DOMContentLoaded', function() {
+          if (typeof lucide !== 'undefined') {
+              lucide.createIcons();
+          }
+
+          const navToggle = document.querySelector('.nav-toggle-modern');
+          const navMenu = document.querySelector('.nav-menu-modern');
+
+          if (navToggle && navMenu) {
+              navToggle.addEventListener('click', function() {
+                  const isExpanded = navToggle.getAttribute('aria-expanded') === 'true';
+                  navToggle.setAttribute('aria-expanded', !isExpanded);
+                  navMenu.style.display = isExpanded ? 'none' : 'flex';
+              });
+          }
+      });
+  </script>
+</body>
+</html>

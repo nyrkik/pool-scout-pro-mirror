@@ -1,0 +1,118 @@
+# Enterprise Logging Configuration for Pool Scout Pro
+version: 1
+disable_existing_loggers: false
+
+formatters:
+  detailed:
+    format: '%(asctime)s | %(name)s | %(levelname)s | %(module)s:%(lineno)d | %(message)s'
+    datefmt: '%Y-%m-%d %H:%M:%S'
+  
+  json:
+    class: pythonjsonlogger.jsonlogger.JsonFormatter
+    format: '%(asctime)s %(name)s %(levelname)s %(module)s %(lineno)d %(message)s'
+  
+  simple:
+    format: '%(levelname)s - %(message)s'
+  
+  werkzeug:
+    format: '%(asctime)s | WERKZEUG | %(levelname)s | %(message)s'
+    datefmt: '%Y-%m-%d %H:%M:%S'
+
+handlers:
+  console:
+    class: logging.StreamHandler
+    level: INFO
+    formatter: detailed
+    stream: ext://sys.stdout
+  
+  main_file:
+    class: logging.handlers.RotatingFileHandler
+    level: DEBUG
+    formatter: detailed
+    filename: data/logs/pool_scout_pro.log
+    maxBytes: 10485760  # 10MB
+    backupCount: 5
+    encoding: utf8
+  
+  error_file:
+    class: logging.handlers.RotatingFileHandler
+    level: ERROR
+    formatter: json
+    filename: data/logs/pool_scout_pro_errors.log
+    maxBytes: 10485760  # 10MB
+    backupCount: 10
+    encoding: utf8
+  
+  access_file:
+    class: logging.handlers.RotatingFileHandler
+    level: INFO
+    formatter: werkzeug
+    filename: data/logs/pool_scout_pro_access.log
+    maxBytes: 10485760  # 10MB
+    backupCount: 5
+    encoding: utf8
+  
+  performance_file:
+    class: logging.handlers.RotatingFileHandler
+    level: INFO
+    formatter: json
+    filename: data/logs/pool_scout_pro_performance.log
+    maxBytes: 5242880   # 5MB
+    backupCount: 3
+    encoding: utf8
+
+loggers:
+  # Application loggers
+  pool_scout_pro:
+    level: DEBUG
+    handlers: [console, main_file, error_file]
+    propagate: false
+  
+  # Service-specific loggers
+  services.search_service:
+    level: DEBUG
+    handlers: [main_file]
+    propagate: true
+  
+  services.pdf_downloader:
+    level: DEBUG
+    handlers: [main_file]
+    propagate: true
+  
+  services.pdf_extractor:
+    level: DEBUG
+    handlers: [main_file]
+    propagate: true
+  
+  # Core component loggers
+  core.browser:
+    level: INFO
+    handlers: [main_file]
+    propagate: true
+  
+  core.database:
+    level: INFO
+    handlers: [main_file]
+    propagate: true
+  
+  # Flask/Werkzeug access logging - fix the formatter issue
+  werkzeug:
+    level: INFO
+    handlers: [access_file]
+    propagate: false
+  
+  # Performance monitoring
+  performance:
+    level: INFO
+    handlers: [performance_file]
+    propagate: false
+  
+  # Error tracking
+  errors:
+    level: ERROR
+    handlers: [error_file]
+    propagate: false
+
+root:
+  level: INFO
+  handlers: [console, main_file]

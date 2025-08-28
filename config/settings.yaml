@@ -1,0 +1,12 @@
+database:
+  path: "data/inspection_data.db"
+browser:
+  selenium_host: "http://localhost:4444/wd/hub"
+downloads:
+  directory: "/mnt/nas/pool_scout_pro/reports"
+backups:
+  directory: "/mnt/nas/pool_scout_pro/backups"
+milestones:
+  directory: "/mnt/nas/pool_scout_pro/milestones"
+flask:
+  port: 7001
