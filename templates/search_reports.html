@@ -122,10 +122,10 @@
               <table class="table table-header-only" role="table" aria-label="Reports table header">
                   <thead>
                       <tr role="row">
-                          <th scope="col" class="col-number"></th>
-                          <th scope="col" class="col-type"></th>
-                          <th scope="col" class="col-facility">Facility</th>
-                          <th scope="col" class="col-findings">Findings</th>
+                          <th scope="col" id="col-number">#</th>
+                          <th scope="col" id="col-type">Type</th>
+                          <th scope="col" id="col-facility">Facility</th>
+                          <th scope="col" id="col-findings">Findings</th>
                       </tr>
                   </thead>
               </table>
@@ -231,7 +231,7 @@
               navToggle.addEventListener('click', function() {
                   const isExpanded = navToggle.getAttribute('aria-expanded') === 'true';
                   navToggle.setAttribute('aria-expanded', !isExpanded);
-                  navMenu.style.display = isExpanded ? 'none' : 'flex';
+                  navMenu.classList.toggle('nav-menu-open');
               });
           }
       });

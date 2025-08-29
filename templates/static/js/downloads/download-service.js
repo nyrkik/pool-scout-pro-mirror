@@ -1,8 +1,7 @@
 /**
- * Download Service - Pool Scout Pro
+ * Enhanced Download Service - Pool Scout Pro
  *
- * Handles PDF download functionality with real-time progress polling.
- * ENHANCED VERSION: Integrates with download poller for live progress updates.
+ * Integrates with real-time progress polling and visual feedback system.
  */
 class DownloadService {
     constructor() {
@@ -10,10 +9,8 @@ class DownloadService {
     }
 
     async startDownload(facilities) {
-        console.log('🎯 DOWNLOAD SERVICE: startDownload called');
-        console.log('📊 DOWNLOAD SERVICE: facilities parameter:', facilities);
-        console.log('📊 DOWNLOAD SERVICE: facilities type:', typeof facilities);
-        console.log('📊 DOWNLOAD SERVICE: facilities length:', facilities ? facilities.length : 'undefined');
+        console.log('DOWNLOAD SERVICE: startDownload called');
+        console.log('DOWNLOAD SERVICE: facilities parameter:', facilities);
 
         if (this.isDownloading) {
             console.log('Download already in progress, ignoring click');
@@ -22,7 +19,7 @@ class DownloadService {
         }
 
         const unsavedFacilities = facilities.filter(f => !f.saved);
-        console.log('🔍 DOWNLOAD SERVICE: filtered to', unsavedFacilities.length, 'unsaved facilities');
+        console.log('DOWNLOAD SERVICE: filtered to', unsavedFacilities.length, 'unsaved facilities');
         
         if (unsavedFacilities.length === 0) {
             const msg = 'All facilities are already saved.';
@@ -34,11 +31,9 @@ class DownloadService {
         window.uiManager?.setSaveButtonProcessing(true);
 
         try {
-            window.uiManager?.showProgress('Starting download...', { showActivity: false });
-
-            console.log('📤 DOWNLOAD SERVICE: About to call apiClient.startDownload with:', unsavedFacilities);
+            console.log('DOWNLOAD SERVICE: About to call apiClient.startDownload with:', unsavedFacilities);
             const data = await window.apiClient.startDownload(unsavedFacilities);
-            console.log('📨 DOWNLOAD SERVICE: Received response:', data);
+            console.log('DOWNLOAD SERVICE: Received response:', data);
 
             if (data && data.success === false && data.code === 'ALREADY_RUNNING') {
                 window.uiManager?.showProgress(data.message || 'A download is already in progress.', { showActivity: false });
@@ -46,12 +41,10 @@ class DownloadService {
             }
 
             if (data?.success) {
-                window.uiManager?.showProgress('Download started! Watch real-time progress below.', { showActivity: false });
-                console.log('✅ Download started, progress polling active');
+                console.log('Download started, beginning progress polling');
                 
-                if (window.pageStateService) {
-                    await window.pageStateService.refreshCurrentState();
-                }
+                // Start real-time polling for progress updates
+                window.downloadPoller?.startPolling();
                 
                 return data;
             } else {
@@ -59,7 +52,7 @@ class DownloadService {
                 throw new Error(emsg);
             }
         } catch (error) {
-            console.error('💥 DOWNLOAD SERVICE: Download error:', error);
+            console.error('DOWNLOAD SERVICE: Download error:', error);
             let errorMessage = 'Download failed. Please try again.';
             if (error?.message) errorMessage = `Download failed: ${error.message}`;
             
@@ -75,16 +68,17 @@ class DownloadService {
     getDownloadState() {
         return { 
             isDownloading: this.isDownloading,
-            isPolling: false
+            isPolling: window.downloadPoller?.isActive() || false
         };
     }
 
     async checkProgress() {
-        return null;
+        return window.downloadPoller?.checkProgress() || null;
     }
 
     stopProgress() {
         console.log('stopProgress called');
+        window.downloadPoller?.stopPolling();
     }
 }
 
