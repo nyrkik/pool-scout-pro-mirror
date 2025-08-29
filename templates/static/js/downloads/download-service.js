@@ -18,7 +18,17 @@ class DownloadService {
             return;
         }
 
-        const unsavedFacilities = facilities.filter(f => !f.saved);
+        // DEBUG: Check each facility's saved property
+        facilities.forEach((f, i) => {
+            console.log(`Facility ${i}: name=${f.name}, saved=${f.saved}, type=${typeof f.saved}`);
+        });
+
+        const unsavedFacilities = facilities.filter(f => {
+            const isUnsaved = !f.saved;
+            console.log(`Filter check: ${f.name} - saved=${f.saved}, !f.saved=${isUnsaved}`);
+            return isUnsaved;
+        });
+        
         console.log('DOWNLOAD SERVICE: filtered to', unsavedFacilities.length, 'unsaved facilities');
         
         if (unsavedFacilities.length === 0) {

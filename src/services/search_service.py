@@ -536,7 +536,8 @@ class SearchService:
               'pdf_url': pdf_url,
               'display_address': cleaned_address,
               'inspection_date': search_date,  # This will be updated during PDF extraction
-              'index': index
+              'index': index,
+              'saved': False
           }
 
       except Exception as e:

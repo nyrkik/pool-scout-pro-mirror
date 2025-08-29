@@ -10,6 +10,7 @@ from core.utilities import NameUtilities, ValidationUtilities, FileUtilities
 from .pdf_extractor import PDFExtractor
 from core.settings import settings
 from .download_lock_service import DownloadLockService
+from .download_progress_service import get_download_progress_service
 
 class PDFDownloader:
     def __init__(self, shared_driver=None):
@@ -18,6 +19,7 @@ class PDFDownloader:
         self.shared_driver = shared_driver
         self.error_handler = ErrorHandler(__name__)
         self.lock_service = DownloadLockService()
+        self.progress_service = get_download_progress_service()
         self.session = requests.Session()
         self.session.headers.update({'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'})
         from datetime import datetime
@@ -35,7 +37,6 @@ class PDFDownloader:
             print(f"🔧 DEBUG: First facility: {facilities_data[0]}")
 
         if not facilities_data:
-
             return {'success': False, 'code': 'NO_INPUT', 'message': 'No facilities to process.', 'successful': 0, 'failed': 0, 'results': []}
 
         job_id = self._make_job_id()
@@ -44,7 +45,10 @@ class PDFDownloader:
             msg = info.get("message", "Download already in progress")
             return {'success': False, 'code': 'ALREADY_RUNNING', 'message': msg, 'successful': 0, 'failed': 0, 'results': []}
 
-        print(f"🔄 Starting PDF downloads for {len(facilities_data)} facilities (job {job_id})")
+        # Initialize progress tracking
+        self.progress_service.start_download(job_id, facilities_data)
+
+        print(f"📄 Starting PDF downloads for {len(facilities_data)} facilities (job {job_id})")
         successful_downloads, failed_downloads, results = 0, 0, []
         driver = self.shared_driver or self.browser_manager.create_driver()
         print(f"🔧 DEBUG: Driver created successfully: {driver}")
@@ -54,10 +58,13 @@ class PDFDownloader:
             for i, facility in enumerate(facilities_data, 1):
                 facility_name = facility.get('name', 'Unknown')
                 pdf_url = facility.get('pdf_url') or facility.get('url')
-                print(f"\n🔄 [{i}/{len(facilities_data)}] Processing: {facility_name}")
-                print(f"🔍 DEBUG: facility_name='{facility_name}'")
-                print(f"🔍 DEBUG: pdf_url='{pdf_url}'")
-                print(f"🔍 DEBUG: facility keys={list(facility.keys())}")
+                print(f"\n📄 [{i}/{len(facilities_data)}] Processing: {facility_name}")
+                print(f"🔗 DEBUG: facility_name='{facility_name}'")
+                print(f"🔗 DEBUG: pdf_url='{pdf_url}'")
+                print(f"🔗 DEBUG: facility keys={list(facility.keys())}")
+
+                # Update progress: starting download
+                self.progress_service.update_facility_progress(i-1, facility_name, 'downloading')
 
                 from core.utilities import TextUtilities
                 inspection_id = TextUtilities.extract_inspection_id_from_url(pdf_url)
@@ -66,27 +73,41 @@ class PDFDownloader:
                 filepath = self.download_path / filename
 
                 if self._download_pdf_file(pdf_url, filepath, driver):
+                    # Update progress: extracting
+                    self.progress_service.update_facility_progress(i-1, facility_name, 'extracting')
+                    
                     try:
                         extraction_result = self.extractor.extract_and_save(
                             pdf_path=str(filepath), facility_name=facility_name, inspection_id=inspection_id)
                         if extraction_result:
                             successful_downloads += 1
                             results.append({'facility': facility_name, 'success': True, 'filename': filename})
+                            # Update progress: completed
+                            self.progress_service.update_facility_progress(i-1, facility_name, 'completed')
                         else:
                             failed_downloads += 1
                             results.append({'facility': facility_name, 'success': False, 'error': 'Extraction failed'})
+                            # Update progress: failed
+                            self.progress_service.update_facility_progress(i-1, facility_name, 'failed', 'Extraction failed')
                     except Exception as e:
                         self.error_handler.log_error("PDF extraction", e, {'facility': facility_name, 'filename': filename})
                         failed_downloads += 1
                         results.append({'facility': facility_name, 'success': False, 'error': f'Extraction error: {str(e)}'})
+                        # Update progress: failed
+                        self.progress_service.update_facility_progress(i-1, facility_name, 'failed', f'Extraction error: {str(e)}')
                 else:
                     failed_downloads += 1
                     results.append({'facility': facility_name, 'success': False, 'error': 'Download failed'})
+                    # Update progress: failed
+                    self.progress_service.update_facility_progress(i-1, facility_name, 'failed', 'Download failed')
 
                 if i < len(facilities_data):
                     time.sleep(2)
 
         finally:
+            # Complete progress tracking
+            self.progress_service.complete_download(job_id, successful_downloads, failed_downloads)
+            
             # CORRECTED: More robust cleanup block
             print("--- Starting final cleanup ---")
             try:
@@ -122,7 +143,7 @@ class PDFDownloader:
             if not pdf_href: return False
 
             actual_pdf_url = ("https://inspections.myhealthdepartment.com" + pdf_href) if pdf_href.startswith("/") else pdf_href
-            print(f"📎 Found PDF link: {actual_pdf_url}")
+            print(f"🔎 Found PDF link: {actual_pdf_url}")
 
             cookies = {c["name"]: c["value"] for c in driver.get_cookies()}
             self.session.cookies.update(cookies)

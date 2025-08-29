@@ -15,15 +15,17 @@ class DownloadUI {
     async handleSaveClick() {
         try {
             const currentResults = window.searchService.getCurrentResults();
-            const unsaved = currentResults.filter(f => !f.saved);
+            const unsaved = currentResults.filter(f => !f.saved); // Filter FIRST
             
-            // Initialize tracking for all unsaved facilities
+            // Initialize tracking for unsaved facilities
             this.initializeDownloadTracking(unsaved);
             
-            // Immediately update visual states to "downloading"
+            // Start download with original currentResults (download service will filter again)
+            await window.downloadService.startDownload(currentResults);
+            
+            // ONLY set downloading state after successful download start
             this.setFacilitiesDownloading(unsaved);
             
-            await window.downloadService.startDownload(currentResults);
         } catch (error) {
             console.error('Save click error:', error);
             // Reset visual states on error

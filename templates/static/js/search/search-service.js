@@ -40,8 +40,19 @@ class SearchService {
 
             const data = await response.json();
 
+            // DEBUG: Log the API response
+            console.log('API Response:', data);
+            if (data.facilities && data.facilities.length > 0) {
+                console.log('First facility saved property:', data.facilities[0].saved);
+                console.log('All facilities saved status:', data.facilities.map(f => ({name: f.name, saved: f.saved})));
+            }
+
             if (data.success) {
                 this.currentResults = data.facilities || [];
+                
+                // DEBUG: Log what's stored in currentResults
+                console.log('currentResults saved status:', this.currentResults.map(f => ({name: f.name, saved: f.saved})));
+                
                 return data;
             } else {
                 throw new Error(data.message || 'Search failed');
@@ -83,6 +94,7 @@ class SearchService {
     }
 
     getCurrentResults() {
+        console.log('getCurrentResults called, returning:', this.currentResults.map(f => ({name: f.name, saved: f.saved})));
         return this.currentResults;
     }
 
