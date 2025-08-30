@@ -1,3 +1,4 @@
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 #!/bin/bash
 # Setup Git Development Workflow
 
@@ -11,10 +12,10 @@ git checkout -b development 2>/dev/null || git checkout development
 echo "✅ Development toolkit created!"
 echo ""
 echo "📋 USAGE EXAMPLES:"
-echo "  ./dev-tools/dev-workflow.sh validate src/core/error_handler.py"
-echo "  ./dev-tools/dev-workflow.sh edit src/core/error_handler.py /tmp/new_version.py"
-echo "  ./dev-tools/dev-workflow.sh rollback src/core/error_handler.py"
-echo "  ./dev-tools/dev-workflow.sh restart"
+echo "  "$SCRIPT_DIR"/dev-workflow.sh validate src/core/error_handler.py"
+echo "  "$SCRIPT_DIR"/dev-workflow.sh edit src/core/error_handler.py /tmp/new_version.py"
+echo "  "$SCRIPT_DIR"/dev-workflow.sh rollback src/core/error_handler.py"
+echo "  "$SCRIPT_DIR"/dev-workflow.sh restart"
 echo ""
 echo "🎯 WORKFLOW:"
 echo "1. Make changes on development branch"

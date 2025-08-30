@@ -1,3 +1,4 @@
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 #!/bin/bash
 # Safe Edit - Apply changes with validation and rollback
 
@@ -36,7 +37,7 @@ echo "📦 Backup created: $BACKUP_FILE"
 
 # Step 2: Validate new content
 echo "🔍 Validating new content..."
-if ! ./dev-tools/validate-syntax.sh "$NEW_CONTENT"; then
+if ! "$SCRIPT_DIR"/validate-syntax.sh "$NEW_CONTENT"; then
    echo "❌ New content failed validation!"
    exit 1
 fi
@@ -47,7 +48,7 @@ cp "$NEW_CONTENT" "$TARGET"
 
 # Step 4: Validate applied change
 echo "🔍 Validating applied change..."
-if ! ./dev-tools/validate-syntax.sh "$TARGET"; then
+if ! "$SCRIPT_DIR"/validate-syntax.sh "$TARGET"; then
    echo "❌ Applied change failed validation! Rolling back..."
    cp "$BACKUP_FILE" "$TARGET"
    echo "🔙 Rollback complete"

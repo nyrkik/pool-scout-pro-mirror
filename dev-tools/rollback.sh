@@ -1,3 +1,4 @@
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 #!/bin/bash
 # Quick Rollback - Restore from latest backup
 
@@ -33,4 +34,4 @@ cp "$LATEST_BACKUP" "$TARGET"
 
 echo "✅ Rollback complete!"
 echo "🔍 Validating restored file..."
-./dev-tools/validate-syntax.sh "$TARGET"
+"$SCRIPT_DIR"/validate-syntax.sh "$TARGET"

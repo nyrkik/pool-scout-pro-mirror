@@ -1,29 +1,28 @@
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 #!/bin/bash
 set -e
-
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 cmd=$1
 shift || true
 
 case $cmd in
   validate)
-    "$SCRIPT_DIR/validate-syntax.sh" "$@"
+    "$SCRIPT_DIR"/validate-syntax.sh "$@"
     ;;
   edit)
-    "$SCRIPT_DIR/safe-edit.sh" "$@"
+    "$SCRIPT_DIR"/safe-edit.sh "$@"
     ;;
   patch)
-    "$SCRIPT_DIR/safe-patch.sh" "$@"
+    "$SCRIPT_DIR"/safe-patch.sh "$@"
     ;;
   rollback)
-    "$SCRIPT_DIR/rollback.sh" "$@"
+    "$SCRIPT_DIR"/rollback.sh "$@"
     ;;
   restart)
-    "$SCRIPT_DIR/workflow.sh" restart
+    "$SCRIPT_DIR"/workflow.sh restart
     ;;
   status)
-    "$SCRIPT_DIR/workflow.sh" status
+    "$SCRIPT_DIR"/workflow.sh status
     ;;
   push)
     if [ -z "$1" ]; then
@@ -33,13 +32,10 @@ case $cmd in
     COMMIT_MSG="$1"
     git add .
     git commit -m "$COMMIT_MSG"
-    git push origin "$(git rev-parse --abbrev-ref HEAD)"
-    git push mirror "$(git rev-parse --abbrev-ref HEAD)"
+    git push origin main
+    git push mirror main
     ;;
   *)
-    echo "🛠 DEV WORKFLOW COORDINATOR"
-    echo "=========================="
-    echo
     echo "Available commands:"
     echo "  validate <file>           - Check syntax only"
     echo "  edit <target> <new>       - Safe file replacement"

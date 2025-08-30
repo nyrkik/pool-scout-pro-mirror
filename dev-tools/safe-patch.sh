@@ -1,3 +1,4 @@
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 #!/bin/bash
 # Safe Patch - Apply git-style patches with validation
 
@@ -41,7 +42,7 @@ fi
 
 # Step 3: Validate patched file
 echo "🔍 Validating patched file..."
-if ! ./dev-tools/validate-syntax.sh "$TARGET"; then
+if ! "$SCRIPT_DIR"/validate-syntax.sh "$TARGET"; then
     echo "❌ Patched file failed validation! Rolling back..."
     cp "$BACKUP_FILE" "$TARGET"
     echo "🔙 Rollback complete"
