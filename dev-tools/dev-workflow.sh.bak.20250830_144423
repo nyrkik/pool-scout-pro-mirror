@@ -1,25 +1,40 @@
 #!/bin/bash
 set -e
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 cmd=$1
 shift || true
 
 case $cmd in
-  validate)  "$SCRIPT_DIR/validate-syntax.sh" "$@" ;;
-  edit)      "$SCRIPT_DIR/safe-edit.sh" "$@" ;;
-  patch)     "$SCRIPT_DIR/safe-patch.sh" "$@" ;;
-  rollback)  "$SCRIPT_DIR/rollback.sh" "$@" ;;
-  restart)   "$SCRIPT_DIR/workflow.sh" restart ;;
-  status)    "$SCRIPT_DIR/workflow.sh" status ;;
+  validate)
+    "$SCRIPT_DIR/validate-syntax.sh" "$@"
+    ;;
+  edit)
+    "$SCRIPT_DIR/safe-edit.sh" "$@"
+    ;;
+  patch)
+    "$SCRIPT_DIR/safe-patch.sh" "$@"
+    ;;
+  rollback)
+    "$SCRIPT_DIR/rollback.sh" "$@"
+    ;;
+  restart)
+    "$SCRIPT_DIR/workflow.sh" restart
+    ;;
+  status)
+    "$SCRIPT_DIR/workflow.sh" status
+    ;;
   push)
-    [ -z "$1" ] && { echo 'Usage: ./dev-tools/dev-workflow.sh push "commit message"'; exit 1; }
+    if [ -z "$1" ]; then
+      echo "Usage: $0 push \"commit message\""
+      exit 1
+    fi
     COMMIT_MSG="$1"
-    BRANCH="$(git rev-parse --abbrev-ref HEAD)"
     git add .
     git commit -m "$COMMIT_MSG"
-    git push origin "$BRANCH"
-    git push mirror "$BRANCH"
+    git push origin "$(git rev-parse --abbrev-ref HEAD)"
+    git push mirror "$(git rev-parse --abbrev-ref HEAD)"
     ;;
   *)
     echo "🛠 DEV WORKFLOW COORDINATOR"

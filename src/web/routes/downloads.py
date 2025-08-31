@@ -13,7 +13,7 @@ import os
 # Add src to path for service factory imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
-from web.shared.services import get_pdf_downloader
+from src.web.shared.services import get_pdf_downloader
 
 # Note: blueprint is rooted at /api so we can define both /v1/downloads/start and /downloads/start
 bp = Blueprint('downloads', __name__, url_prefix='/api')
