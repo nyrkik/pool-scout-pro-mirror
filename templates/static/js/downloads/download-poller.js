@@ -13,7 +13,11 @@ class DownloadPoller {
         this.maxPollErrors = 3;
         this.currentErrors = 0;
         this.lastProgressData = null;
-        this.processedFacilities = new Set(); // Track which facilities we've already processed
+        this.processedFacilities = new Set();
+        this.prevStatuses = new Map();
+        this.hasSeenActive = false;
+        this.maxIdlePolls = 30; // Stop after 60 seconds of idle (30 * 2s)
+        this.idlePollCount = 0;
     }
 
     startPolling() {
@@ -27,13 +31,14 @@ class DownloadPoller {
         this.currentErrors = 0;
         this.lastProgressData = null;
         this.processedFacilities.clear();
+        this.prevStatuses.clear();
+        this.hasSeenActive = false;
+        this.idlePollCount = 0;
 
-        // Start polling
         this.pollInterval = setInterval(() => {
             this.pollProgress();
         }, this.pollFrequency);
 
-        // Do first poll immediately
         this.pollProgress();
     }
 
@@ -53,6 +58,9 @@ class DownloadPoller {
         this.currentErrors = 0;
         this.lastProgressData = null;
         this.processedFacilities.clear();
+        this.prevStatuses.clear();
+        this.hasSeenActive = false;
+        this.idlePollCount = 0;
     }
 
     async pollProgress() {
@@ -67,7 +75,7 @@ class DownloadPoller {
 
             if (data.success) {
                 this.handleProgressUpdate(data.progress);
-                this.currentErrors = 0; // Reset error count on success
+                this.currentErrors = 0;
             } else {
                 throw new Error(data.error || 'Failed to get progress data');
             }
@@ -80,12 +88,19 @@ class DownloadPoller {
     handleProgressUpdate(progressData) {
         this.lastProgressData = progressData;
 
+        // Check if backend shows activity
+        if (progressData.is_active) {
+            this.hasSeenActive = true;
+            this.idlePollCount = 0; // Reset idle counter
+        } else {
+            this.idlePollCount++;
+        }
+
         // Handle individual facility completions
         if (progressData.completed_facilities) {
             progressData.completed_facilities.forEach(facilityData => {
                 const facilityKey = `${facilityData.index}_${facilityData.status}`;
                 
-                // Only process each facility completion once
                 if (!this.processedFacilities.has(facilityKey)) {
                     this.processedFacilities.add(facilityKey);
                     
@@ -95,7 +110,7 @@ class DownloadPoller {
             });
         }
 
-        // Legacy support - handle single facility completion
+        // Legacy support
         if (progressData.last_completed) {
             const facilityKey = `${progressData.last_completed.index}_completed`;
             if (!this.processedFacilities.has(facilityKey)) {
@@ -112,16 +127,28 @@ class DownloadPoller {
             }
         }
 
-        // Check if download is complete
-        if (!progressData.is_active || progressData.status === 'completed') {
-            console.log('Download completed, stopping polling');
+        // Stop polling if:
+        // 1. Download completed normally
+        // 2. We saw activity but it's now inactive 
+        // 3. Never saw activity and been idle too long (download failed to start)
+        if (progressData.status === 'completed' || 
+            (this.hasSeenActive && !progressData.is_active) ||
+            (!this.hasSeenActive && this.idlePollCount >= this.maxIdlePolls)) {
+            
+            console.log('Download ended, stopping polling. Reason:', 
+                progressData.status === 'completed' ? 'completed' :
+                (this.hasSeenActive && !progressData.is_active) ? 'finished after activity' :
+                'timeout - no activity detected');
+                
             this.stopPolling();
             
-            // Let the downloadUI handle completion - it will manage final states
-            // Don't call handleDownloadComplete as the UI handles this automatically
+            // If we never saw activity, show error message
+            if (!this.hasSeenActive && this.idlePollCount >= this.maxIdlePolls) {
+                window.uiManager?.showProgress('Download failed to start. Please check system status.', { showActivity: false });
+            }
         }
 
-        // Log progress updates for debugging
+        // Log progress for debugging
         if (progressData.is_active && progressData.current_facility) {
             console.log(`Progress: ${progressData.completed_count || 0}/${progressData.total_count || 0} - ${progressData.current_facility}`);
         }
@@ -135,7 +162,6 @@ class DownloadPoller {
             console.error('Too many polling errors, stopping');
             this.stopPolling();
             
-            // Notify UI of polling failure
             window.uiManager?.showProgress('Lost connection to download progress. Downloads may still be running.', { showActivity: false });
         }
     }

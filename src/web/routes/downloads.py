@@ -13,7 +13,7 @@ import os
 # Add src to path for service factory imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
-from src.web.shared.services import get_pdf_downloader
+from src.web.shared.services import get_pdf_downloader, get_search_service
 
 # Note: blueprint is rooted at /api so we can define both /v1/downloads/start and /downloads/start
 bp = Blueprint('downloads', __name__, url_prefix='/api')
@@ -22,7 +22,9 @@ logger = logging.getLogger('pool_scout_pro')
 def _run_downloads(facilities):
     try:
         # Use factory pattern instead of direct instantiation
-        downloader = get_pdf_downloader()
+        search_service = get_search_service()
+        shared_driver = search_service.get_shared_driver()
+        downloader = get_pdf_downloader(shared_driver)
         result = downloader.download_pdfs_from_facilities(facilities or [])
         logger.info("Download job finished: %s", {
             'successful': result.get('successful'),

@@ -33,9 +33,9 @@ class ApiClient {
         console.log('🚀 API CLIENT: startDownload called with', facilities.length, 'facilities');
         
         try {
-            console.log('📤 API CLIENT: About to make fetch request to /api/v1/downloads/start');
+            console.log('📤 API CLIENT: About to make fetch request to /api/v1/reports/download/start');
             
-            const response = await fetch('/api/v1/downloads/start', {
+            const response = await fetch('/api/v1/reports/download/start', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
