@@ -1,6 +1,5 @@
 from flask import Blueprint, jsonify, request
-from src.web.shared.services import get_database_service, get_search_service, get_pdf_downloader
-from src.services.download_progress_service import get_download_progress_service
+from src.web.shared.services import get_database_service, get_search_service, get_pdf_downloader, get_download_progress_service_factory
 from src.core.error_handler import ErrorHandler
 from services.search_progress_service import SearchProgressService
 
@@ -8,7 +7,6 @@ api_routes = Blueprint('api', __name__, url_prefix='/api/v1')
 
 db_service = get_database_service()
 search_service = get_search_service()
-download_progress_service = get_download_progress_service()
 error_handler = ErrorHandler()
 
 # Track last searched date for change detection
@@ -222,7 +220,7 @@ def start_download():
 @api_routes.route('/downloads/progress', methods=['GET'])
 def download_progress():
     try:
-        progress_data = download_progress_service.get_progress()
+        progress_data = get_download_progress_service_factory().get_progress()
         return jsonify({
             "success": True,
             "progress": progress_data

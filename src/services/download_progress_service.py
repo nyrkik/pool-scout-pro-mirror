@@ -129,6 +129,8 @@ class DownloadProgressService:
             return dict(self._progress_data)  # Return copy to avoid external modification
     
     def is_download_active(self) -> bool:
+    
+    def is_download_active(self) -> bool:
         """Check if download is currently active"""
         with self._lock:
             return self._progress_data['is_active']

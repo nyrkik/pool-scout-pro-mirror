@@ -10,7 +10,7 @@ from core.utilities import NameUtilities, ValidationUtilities, FileUtilities
 from .pdf_extractor import PDFExtractor
 from core.settings import settings
 from .download_lock_service import DownloadLockService
-from .download_progress_service import get_download_progress_service
+from services.download_progress_service import get_download_progress_service
 
 class PDFDownloader:
     def __init__(self, shared_driver=None):

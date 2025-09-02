@@ -88,67 +88,36 @@ class DownloadPoller {
     handleProgressUpdate(progressData) {
         this.lastProgressData = progressData;
 
-        // Check if backend shows activity
-        if (progressData.is_active) {
-            this.hasSeenActive = true;
-            this.idlePollCount = 0; // Reset idle counter
-        } else {
-            this.idlePollCount++;
-        }
-
-        // Handle individual facility completions
-        if (progressData.completed_facilities) {
-            progressData.completed_facilities.forEach(facilityData => {
-                const facilityKey = `${facilityData.index}_${facilityData.status}`;
+        // Process facility status changes from the facilities array (not completed_facilities)
+        if (progressData.facilities) {
+            progressData.facilities.forEach(facilityData => {
+                const currentStatus = this.prevStatuses.get(facilityData.index) || "pending";
                 
-                if (!this.processedFacilities.has(facilityKey)) {
-                    this.processedFacilities.add(facilityKey);
+                // Only process if status actually changed
+                if (currentStatus !== facilityData.status) {
+                    this.prevStatuses.set(facilityData.index, facilityData.status);
                     
-                    const success = facilityData.status === 'completed' || facilityData.status === 'success';
-                    window.downloadUI?.handleFacilityCompleted(facilityData.index, success);
+                    if (facilityData.status === "completed") {
+                        window.downloadUI?.handleFacilityCompleted(facilityData.index, true);
+                    } else if (facilityData.status === "failed") {
+                        window.downloadUI?.handleFacilityCompleted(facilityData.index, false);
+                    }
                 }
             });
         }
 
-        // Legacy support
-        if (progressData.last_completed) {
-            const facilityKey = `${progressData.last_completed.index}_completed`;
-            if (!this.processedFacilities.has(facilityKey)) {
-                this.processedFacilities.add(facilityKey);
-                window.downloadUI?.handleFacilityCompleted(progressData.last_completed.index, true);
-            }
+        // Mark when backend reports active
+        if (progressData.is_active) { 
+            this.hasSeenActive = true; 
         }
 
-        if (progressData.last_failed) {
-            const facilityKey = `${progressData.last_failed.index}_failed`;
-            if (!this.processedFacilities.has(facilityKey)) {
-                this.processedFacilities.add(facilityKey);
-                window.downloadUI?.handleFacilityCompleted(progressData.last_failed.index, false);
-            }
-        }
-
-        // Stop polling if:
-        // 1. Download completed normally
-        // 2. We saw activity but it's now inactive 
-        // 3. Never saw activity and been idle too long (download failed to start)
-        if (progressData.status === 'completed' || 
-            (this.hasSeenActive && !progressData.is_active) ||
-            (!this.hasSeenActive && this.idlePollCount >= this.maxIdlePolls)) {
-            
-            console.log('Download ended, stopping polling. Reason:', 
-                progressData.status === 'completed' ? 'completed' :
-                (this.hasSeenActive && !progressData.is_active) ? 'finished after activity' :
-                'timeout - no activity detected');
-                
+        // Check if download is complete
+        if (progressData.status === "completed" || (this.hasSeenActive && !progressData.is_active)) {
+            console.log("Download completed, stopping polling");
             this.stopPolling();
-            
-            // If we never saw activity, show error message
-            if (!this.hasSeenActive && this.idlePollCount >= this.maxIdlePolls) {
-                window.uiManager?.showProgress('Download failed to start. Please check system status.', { showActivity: false });
-            }
         }
 
-        // Log progress for debugging
+        // Log progress updates for debugging
         if (progressData.is_active && progressData.current_facility) {
             console.log(`Progress: ${progressData.completed_count || 0}/${progressData.total_count || 0} - ${progressData.current_facility}`);
         }
