@@ -11,6 +11,7 @@ from .pdf_extractor import PDFExtractor
 from core.settings import settings
 from .download_lock_service import DownloadLockService
 from services.download_progress_service import get_download_progress_service
+from .failed_download_service import FailedDownloadService
 
 class PDFDownloader:
     def __init__(self, shared_driver=None):
@@ -20,6 +21,7 @@ class PDFDownloader:
         self.error_handler = ErrorHandler(__name__)
         self.lock_service = DownloadLockService()
         self.progress_service = get_download_progress_service()
+        self.failed_download_service = FailedDownloadService()
         self.session = requests.Session()
         self.session.headers.update({'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'})
         from datetime import datetime
@@ -58,23 +60,35 @@ class PDFDownloader:
             for i, facility in enumerate(facilities_data, 1):
                 facility_name = facility.get('name', 'Unknown')
                 pdf_url = facility.get('pdf_url') or facility.get('url')
+                inspection_id = facility.get('inspection_id')
+                inspection_date = facility.get('inspection_date')
+                
                 print(f"\n📄 [{i}/{len(facilities_data)}] Processing: {facility_name}")
                 print(f"🔗 DEBUG: facility_name='{facility_name}'")
                 print(f"🔗 DEBUG: pdf_url='{pdf_url}'")
+                print(f"🔗 DEBUG: inspection_id='{inspection_id}'")
                 print(f"🔗 DEBUG: facility keys={list(facility.keys())}")
 
-                # Update progress: starting download
-                self.progress_service.update_facility_progress(i-1, facility_name, 'downloading')
+                # Skip facilities without inspection_id
+                if not inspection_id:
+                    print(f"⚠️ Skipping facility without inspection_id: {facility_name}")
+                    self.failed_download_service.store_failed_download(
+                        facility_name, pdf_url, inspection_id, inspection_date, 
+                        "No inspection ID", None, job_id
+                    )
+                    failed_downloads += 1
+                    results.append({'facility': facility_name, 'success': False, 'error': 'No inspection ID'})
+                    continue
 
-                from core.utilities import TextUtilities
-                inspection_id = TextUtilities.extract_inspection_id_from_url(pdf_url)
-                inspection_date = facility.get('inspection_date')
+                # Update progress: starting download
+                self.progress_service.update_facility_progress(inspection_id, facility_name, 'downloading')
+
                 filename = FileUtilities.generate_inspection_filename(facility_name, inspection_id, inspection_date)
                 filepath = self.download_path / filename
 
                 if self._download_pdf_file(pdf_url, filepath, driver):
                     # Update progress: extracting
-                    self.progress_service.update_facility_progress(i-1, facility_name, 'extracting')
+                    self.progress_service.update_facility_progress(inspection_id, facility_name, 'extracting')
                     
                     try:
                         extraction_result = self.extractor.extract_and_save(
@@ -83,23 +97,35 @@ class PDFDownloader:
                             successful_downloads += 1
                             results.append({'facility': facility_name, 'success': True, 'filename': filename})
                             # Update progress: completed
-                            self.progress_service.update_facility_progress(i-1, facility_name, 'completed')
+                            self.progress_service.update_facility_progress(inspection_id, facility_name, 'completed')
                         else:
+                            self.failed_download_service.store_failed_download(
+                                facility_name, pdf_url, inspection_id, inspection_date,
+                                "Extraction failed", None, job_id
+                            )
                             failed_downloads += 1
                             results.append({'facility': facility_name, 'success': False, 'error': 'Extraction failed'})
                             # Update progress: failed
-                            self.progress_service.update_facility_progress(i-1, facility_name, 'failed', 'Extraction failed')
+                            self.progress_service.update_facility_progress(inspection_id, facility_name, 'failed', 'Extraction failed')
                     except Exception as e:
                         self.error_handler.log_error("PDF extraction", e, {'facility': facility_name, 'filename': filename})
+                        self.failed_download_service.store_failed_download(
+                            facility_name, pdf_url, inspection_id, inspection_date,
+                            "Extraction error", str(e), job_id
+                        )
                         failed_downloads += 1
                         results.append({'facility': facility_name, 'success': False, 'error': f'Extraction error: {str(e)}'})
                         # Update progress: failed
-                        self.progress_service.update_facility_progress(i-1, facility_name, 'failed', f'Extraction error: {str(e)}')
+                        self.progress_service.update_facility_progress(inspection_id, facility_name, 'failed', f'Extraction error: {str(e)}')
                 else:
+                    self.failed_download_service.store_failed_download(
+                        facility_name, pdf_url, inspection_id, inspection_date,
+                        "Download failed", None, job_id
+                    )
                     failed_downloads += 1
                     results.append({'facility': facility_name, 'success': False, 'error': 'Download failed'})
                     # Update progress: failed
-                    self.progress_service.update_facility_progress(i-1, facility_name, 'failed', 'Download failed')
+                    self.progress_service.update_facility_progress(inspection_id, facility_name, 'failed', 'Download failed')
 
                 if i < len(facilities_data):
                     time.sleep(2)

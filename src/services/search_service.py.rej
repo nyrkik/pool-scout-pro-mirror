@@ -1,0 +1,20 @@
+--- search_service.py
++++ search_service.py
+@@ -530,6 +530,9 @@
+ 
+         pdf_url = self._find_pdf_url_for_facility_element(element)
+ 
++        # Extract inspection ID during search phase
++        inspection_id = TextUtilities.extract_inspection_id_from_url(pdf_url) if pdf_url else None
++
+         return {
+             'name': facility_name,
+             'url': facility_url,
+@@ -537,6 +540,7 @@
+             'display_address': cleaned_address,
+             'inspection_date': search_date,  # This will be updated during PDF extraction
+             'index': index,
++            'inspection_id': inspection_id,
+             'saved': False
+         }
+ 

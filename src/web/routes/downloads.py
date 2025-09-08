@@ -21,10 +21,8 @@ logger = logging.getLogger('pool_scout_pro')
 
 def _run_downloads(facilities):
     try:
-        # Use factory pattern instead of direct instantiation
-        search_service = get_search_service()
-        shared_driver = search_service.get_shared_driver()
-        downloader = get_pdf_downloader(shared_driver)
+        # Create dedicated downloader with its own session
+        downloader = get_pdf_downloader(shared_driver=None)  # Pass None to force new session
         result = downloader.download_pdfs_from_facilities(facilities or [])
         logger.info("Download job finished: %s", {
             'successful': result.get('successful'),
