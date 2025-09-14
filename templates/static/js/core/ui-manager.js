@@ -42,8 +42,6 @@ class UIManager {
   }
 
   renderSearchResults(facilities) {
-      // FIXED: Use search results directly without faulty merging
-      // The search API already returns facilities with correct saved status
       this._renderTable(facilities, false);
   }
 
@@ -81,7 +79,7 @@ class UIManager {
               <td class="text-center">${facilityTypeIcon}</td>
               <td>
                   <div>
-                      <div style="font-weight: 500; cursor: pointer;" onclick="showFullReport(${index}, ${isSavedReport})">${name}</div>
+                      <div style="font-weight: 500; cursor: pointer;" onclick="window.reportModal.show(${index})">${name}</div>
                       <div style="font-size: 13px; color: #6b7280;">${address}</div>
                   </div>
               </td>
@@ -103,24 +101,12 @@ class UIManager {
   }
 
   updateResultsCounts(total = 0, onFile = 0) {
-      if (this.elements.resultsCount) {
-          this.elements.resultsCount.textContent = total;
-      }
-      if (this.elements.onFileCount) {
-          this.elements.onFileCount.textContent = onFile;
-      }
-  }
-
-  updateUnsavedCount(unsavedCount) {
-      if (this.elements.resultsCount) {
-          this.elements.resultsCount.textContent = unsavedCount;
-      }
+      if (this.elements.resultsCount) this.elements.resultsCount.textContent = total;
+      if (this.elements.onFileCount) this.elements.onFileCount.textContent = onFile;
   }
 
   setCurrentSearchDate(date) {
-      if (this.elements.currentSearchDate) {
-          this.elements.currentSearchDate.textContent = date || '-';
-      }
+      if (this.elements.currentSearchDate) this.elements.currentSearchDate.textContent = date || '-';
   }
 
   clearResults() {
@@ -131,7 +117,35 @@ class UIManager {
   }
 
   renderTopFindings(facility, index) {
-      return facility.saved ? 'Click to view details' : 'Not saved yet';
+      if (!facility.saved) {
+          return '<span class="text-muted" style="font-style: italic;">Not saved yet</span>';
+      }
+
+      if (!facility.violations || facility.violations.length === 0) {
+          return '<span class="text-success" style="font-weight: 500;">✓ No violations</span>';
+      }
+
+      const violations = facility.violations.slice(0, 2);
+      const totalViolations = facility.violations.length;
+      
+      let html = '<div class="findings-list" style="cursor: pointer;" onclick="window.violationModal.show(' + index + ')">';
+      html += '<ul>';
+      
+      violations.forEach((violation) => {
+          const findingText = violation.shorthand_summary || violation.violation_title;
+          html += `<li class="finding-item">${this.escapeHtml(findingText)}</li>`;
+      });
+      
+      html += '</ul>';
+      
+      if (totalViolations > 2) {
+          html += `<div class="findings-more-info">Click to see all ${totalViolations} violations</div>`;
+      } else {
+          html += `<div class="findings-more-info">Click for details</div>`;
+      }
+      
+      html += '</div>';
+      return html;
   }
 
   getFacilityTypeIcon(pid) {
@@ -142,23 +156,14 @@ class UIManager {
 
   refreshIcons() {
       if (window.lucide) {
-          window.lucide.createIcons();
+          lucide.createIcons();
       }
   }
 
   escapeHtml(text = '') {
-      const map = {
-          '&': '&amp;',
-          '<': '&lt;',
-          '>': '&gt;',
-          '"': '&quot;',
-          "'": '&#039;'
-      };
-      return text.replace(/[&<>"']/g, m => map[m]);
-  }
-
-  setSaveButtonProcessing(isProcessing) {
-      console.log(`setSaveButtonProcessing called: ${isProcessing}`);
+      if (text === null || text === undefined) return '';
+      const map = {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'};
+      return String(text).replace(/[&<>"']/g, m => map[m]);
   }
 }
 
