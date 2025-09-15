@@ -82,6 +82,20 @@ class SearchService {
             const data = await response.json();
 
             if (data.success) {
+                // FIXED: Store the report data in currentResults for modal access
+                // Transform reports to match the expected facility structure
+                this.currentResults = data.reports.map(report => ({
+                    ...report.facility,
+                    saved: true,
+                    violations: report.violations,
+                    inspection_date: report.inspection_date,
+                    inspection_type: report.inspection_type,
+                    inspector_name: report.inspector_name,
+                    report_notes: report.report_notes,
+                    inspection_id: report.inspection_id
+                }));
+                
+                console.log('Stored existing reports in currentResults:', this.currentResults.length);
                 return data;
             } else {
                 throw new Error(data.message || 'Failed to get existing reports');
@@ -94,12 +108,13 @@ class SearchService {
     }
 
     getCurrentResults() {
-        console.log('getCurrentResults called, returning:', this.currentResults.map(f => ({name: f.name, saved: f.saved})));
+        console.log('getCurrentResults called, returning:', this.currentResults);
         return this.currentResults;
     }
 
     updateCurrentResults(newResults) {
         this.currentResults = newResults;
+        console.log('Updated currentResults to:', this.currentResults.length, 'items');
     }
 }
 

@@ -23,6 +23,7 @@ from dateutil.parser import parse as parse_date
 from core.error_handler import ErrorHandler, with_error_handling, CommonCleanup
 from core.utilities import FileUtilities
 from services.violation_summarizer import summarize_violation
+from services.violation_severity_service import assess_violation_severity
 
 
 class PDFExtractor:
@@ -32,7 +33,7 @@ class PDFExtractor:
 
     @with_error_handling("PDF extraction and save", default_return=None)
     def extract_and_save(self, pdf_path, facility_name=None, inspection_id=None, expected_date=None):
-        logging.info(f"🔎 Processing: {os.path.basename(pdf_path)}")
+        logging.info(f"🔍 Processing: {os.path.basename(pdf_path)}")
         text = self.extract_text(pdf_path)
         if not text: return None
 
@@ -109,14 +110,34 @@ class PDFExtractor:
     def _save_violations(self, cursor, violations, report_id, facility_id):
         cursor.execute("DELETE FROM violations WHERE report_id = ?", (report_id,))
         for v in violations:
+            # Generate AI summary
             summary = summarize_violation(
                 v.get('violation_title'),
                 v.get('violation_code'),
                 cursor=cursor
             )
-            cursor.execute('INSERT INTO violations (report_id, facility_id, violation_code, violation_title, observations, shorthand_summary) VALUES (?, ?, ?, ?, ?, ?)',
-                           (report_id, facility_id, v.get('violation_code'), v.get('violation_title'), v.get('observations'), summary))
-        logging.info(f"   ✅ Saved {len(violations)} violations with summaries.")
+            
+            # ADDED: Assess violation severity
+            severity_assessment = assess_violation_severity(
+                violation_title=v.get('violation_title', ''),
+                observations=v.get('observations', ''),
+                violation_code=v.get('violation_code', '')
+            )
+            
+            cursor.execute('''
+                INSERT INTO violations (
+                    report_id, facility_id, violation_code, violation_title, 
+                    observations, shorthand_summary, severity_level
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                report_id, facility_id, 
+                v.get('violation_code'), 
+                v.get('violation_title'), 
+                v.get('observations'), 
+                summary,
+                severity_assessment['severity_level']
+            ))
+        logging.info(f"   ✅ Saved {len(violations)} violations with summaries and severity scores.")
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -136,15 +157,15 @@ if __name__ == '__main__':
         )
         if result and result.get('success'):
             logging.info("✅ Test completed successfully!")
-            # Optional: Query DB to see the new summary
+            # Optional: Query DB to see the new summary and severity
             try:
                 with sqlite3.connect('data/inspection_data.db') as conn:
                     cursor = conn.cursor()
-                    cursor.execute("SELECT violation_title, shorthand_summary FROM violations WHERE report_id = ?", (result['report_id'],))
-                    summaries = cursor.fetchall()
-                    logging.info("--- VERIFICATION: Summaries saved in DB ---")
-                    for row in summaries:
-                        logging.info(f"'{row[0]}' -> '{row[1]}'")
+                    cursor.execute("SELECT violation_title, shorthand_summary, severity_level FROM violations WHERE report_id = ?", (result['report_id'],))
+                    results = cursor.fetchall()
+                    logging.info("--- VERIFICATION: Summaries and severity saved in DB ---")
+                    for row in results:
+                        logging.info(f"'{row[0]}' -> '{row[1]}' (Severity: {row[2]})")
             except Exception as e:
                 logging.error(f"Could not verify DB results: {e}")
         else:

@@ -43,11 +43,28 @@ class UIManager {
 
   renderSearchResults(facilities) {
       this._renderTable(facilities, false);
+      // Update the search service with the current facilities
+      if (window.searchService) {
+          window.searchService.updateCurrentResults(facilities);
+      }
   }
 
   renderSavedReports(reports) {
-      const facilities = reports.map(r => ({...r.facility, saved: true, violations: r.violations}));
+      const facilities = reports.map(r => ({
+          ...r.facility, 
+          saved: true, 
+          violations: r.violations,
+          inspection_date: r.inspection_date,
+          inspection_type: r.inspection_type,
+          inspector_name: r.inspector_name,
+          report_notes: r.report_notes,
+          inspection_id: r.inspection_id
+      }));
       this._renderTable(facilities, true);
+      // Update the search service with the transformed facilities
+      if (window.searchService) {
+          window.searchService.updateCurrentResults(facilities);
+      }
   }
 
   _renderTable(facilities, isSavedReport) {
@@ -125,15 +142,36 @@ class UIManager {
           return '<span class="text-success" style="font-weight: 500;">✓ No violations</span>';
       }
 
-      const violations = facility.violations.slice(0, 2);
+      // ADDED: Sort violations by severity level (highest first), then by shorthand_summary
+      const sortedViolations = [...facility.violations].sort((a, b) => {
+          // Primary sort: severity_level descending (10, 9, 8, ...)
+          const severityA = a.severity_level || 0;
+          const severityB = b.severity_level || 0;
+          if (severityB !== severityA) {
+              return severityB - severityA;
+          }
+          
+          // Secondary sort: alphabetical by summary for consistency
+          const summaryA = a.shorthand_summary || a.violation_title || '';
+          const summaryB = b.shorthand_summary || b.violation_title || '';
+          return summaryA.localeCompare(summaryB);
+      });
+
+      // Show top 2 highest severity violations
+      const topViolations = sortedViolations.slice(0, 2);
       const totalViolations = facility.violations.length;
       
       let html = '<div class="findings-list" style="cursor: pointer;" onclick="window.violationModal.show(' + index + ')">';
       html += '<ul>';
       
-      violations.forEach((violation) => {
+      topViolations.forEach((violation) => {
           const findingText = violation.shorthand_summary || violation.violation_title;
-          html += `<li class="finding-item">${this.escapeHtml(findingText)}</li>`;
+          const severityLevel = violation.severity_level || 0;
+          
+          // Add severity indicator for high-priority violations
+          const severityIndicator = severityLevel >= 8 ? ' 🚨' : severityLevel >= 6 ? ' ⚠️' : '';
+          
+          html += `<li class="finding-item">${this.escapeHtml(findingText)}${severityIndicator}</li>`;
       });
       
       html += '</ul>';
