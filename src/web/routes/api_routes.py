@@ -1,7 +1,9 @@
 from flask import Blueprint, jsonify, request
+import sqlite3
 from src.web.shared.services import get_database_service, get_search_service, get_pdf_downloader, get_download_progress_service_factory
 from src.core.error_handler import ErrorHandler
 from services.search_progress_service import SearchProgressService
+from core.database_config import db_config
 
 api_routes = Blueprint('api', __name__, url_prefix='/api/v1')
 
@@ -118,7 +120,7 @@ def search_with_duplicates():
         emd_duplicate_names = search_data.get('emd_duplicate_names', [])
         
         print(f"📊 SEARCH START: Found {len(facilities)} facilities")
-        print(f"🔄 SEARCH START: EMD duplicates: {emd_duplicate_count}")
+        print(f"📄 SEARCH START: EMD duplicates: {emd_duplicate_count}")
         
         # Create count data from facilities list
         total_reports = len(facilities) if facilities else 0
@@ -228,3 +230,108 @@ def download_progress():
     except Exception as e:
         error_handler.log_error("Download Progress API Error", str(e))
         return jsonify({"success": False, "message": "An unexpected error occurred."}), 500
+
+# MANAGEMENT ENDPOINTS - Added for Sapphire Pool Service facility tracking
+
+@api_routes.route('/facilities/<int:facility_id>/management', methods=['GET'])
+def get_facility_management(facility_id):
+    """Get management information for a facility"""
+    try:
+        conn = sqlite3.connect(db_config.inspection_db_path)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT id, name, sapphire_managed, management_company
+            FROM facilities 
+            WHERE id = ?
+        """, (facility_id,))
+        
+        facility = cursor.fetchone()
+        conn.close()
+        
+        if not facility:
+            return jsonify({'success': False, 'message': 'Facility not found'}), 404
+            
+        return jsonify({
+            'success': True,
+            'facility': {
+                'id': facility['id'],
+                'name': facility['name'],
+                'sapphire_managed': bool(facility['sapphire_managed']),
+                'management_company': facility['management_company']
+            }
+        })
+        
+    except Exception as e:
+        error_handler.log_error("Get Facility Management API Error", str(e))
+        return jsonify({'success': False, 'message': f'Error retrieving facility: {str(e)}'}), 500
+
+@api_routes.route('/facilities/<int:facility_id>/management', methods=['PUT'])
+def update_facility_management(facility_id):
+    """Update management information for a facility"""
+    try:
+        data = request.get_json()
+        sapphire_managed = data.get('sapphire_managed', False)
+        management_company = data.get('management_company', '').strip() or None
+        
+        conn = sqlite3.connect(db_config.inspection_db_path)
+        cursor = conn.cursor()
+        
+        # Verify facility exists
+        cursor.execute("SELECT id FROM facilities WHERE id = ?", (facility_id,))
+        if not cursor.fetchone():
+            conn.close()
+            return jsonify({'success': False, 'message': 'Facility not found'}), 404
+        
+        # Update management information
+        cursor.execute("""
+            UPDATE facilities 
+            SET sapphire_managed = ?, management_company = ?
+            WHERE id = ?
+        """, (sapphire_managed, management_company, facility_id))
+        
+        conn.commit()
+        conn.close()
+        
+        error_handler.log_info("Facility Management Updated", f"Updated facility {facility_id}", {
+            'facility_id': facility_id,
+            'sapphire_managed': sapphire_managed,
+            'management_company': management_company
+        })
+        
+        return jsonify({
+            'success': True, 
+            'message': 'Management information updated successfully'
+        })
+        
+    except Exception as e:
+        error_handler.log_error("Update Facility Management API Error", str(e))
+        return jsonify({'success': False, 'message': f'Error updating facility: {str(e)}'}), 500
+
+@api_routes.route('/management-companies', methods=['GET'])
+def get_management_companies():
+    """Get list of all existing management companies"""
+    try:
+        conn = sqlite3.connect(db_config.inspection_db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT DISTINCT management_company
+            FROM facilities 
+            WHERE management_company IS NOT NULL 
+            AND management_company != ''
+            ORDER BY management_company
+        """)
+        
+        companies = [row[0] for row in cursor.fetchall()]
+        conn.close()
+        
+        return jsonify({
+            'success': True,
+            'companies': companies
+        })
+        
+    except Exception as e:
+        error_handler.log_error("Get Management Companies API Error", str(e))
+        return jsonify({'success': False, 'message': f'Error retrieving companies: {str(e)}'}), 500
