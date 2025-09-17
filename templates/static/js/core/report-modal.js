@@ -54,6 +54,9 @@ class ReportModal {
             const data = await response.json();
             if (data.success) {
                 this.managementCompanies = data.companies || [];
+            } else {
+                console.warn('Failed to load management companies:', data.message);
+                this.managementCompanies = [];
             }
         } catch (error) {
             console.error('Error loading management companies:', error);
@@ -71,7 +74,14 @@ class ReportModal {
     refreshModal() {
         const modalContent = document.querySelector('#report-modal-overlay .modal-content');
         if (modalContent) {
-            modalContent.innerHTML = this._buildModalContent(this.currentFacilityData);
+            try {
+                modalContent.innerHTML = this._buildModalContent(this.currentFacilityData);
+            } catch (error) {
+                console.error('Error refreshing modal content:', error);
+                // Fallback to non-edit mode if edit content fails
+                this.editMode = false;
+                modalContent.innerHTML = this._buildModalContent(this.currentFacilityData);
+            }
         }
     }
 
@@ -79,6 +89,11 @@ class ReportModal {
         const facilityId = this.currentFacilityData.facility?.id || this.currentFacilityData.id;
         const sapphireManaged = document.getElementById('sapphire-managed-checkbox')?.checked || false;
         const managementCompany = document.getElementById('management-company-input')?.value?.trim() || '';
+
+        if (!facilityId) {
+            this.showMessage('Error: Facility ID not found', 'error');
+            return;
+        }
 
         try {
             const response = await fetch(`/api/v1/facilities/${facilityId}/management`, {
@@ -101,10 +116,14 @@ class ReportModal {
                     this.currentFacilityData.management_company = managementCompany;
                 }
                 
+                // If new company was added, reload companies list
+                if (managementCompany && !this.managementCompanies.includes(managementCompany)) {
+                    await this.loadManagementCompanies();
+                }
+                
                 this.editMode = false;
                 this.refreshModal();
                 
-                // Show success message
                 this.showMessage('Management information saved successfully', 'success');
             } else {
                 this.showMessage(result.message || 'Error saving management information', 'error');
@@ -236,9 +255,13 @@ class ReportModal {
     }
 
     _buildEditSection(sapphireManaged, managementCompany) {
-        const companiesOptions = this.managementCompanies.map(company => 
-            `<option value="${this._escape(company)}" ${company === managementCompany ? 'selected' : ''}>${this._escape(company)}</option>`
-        ).join('');
+        // FIXED: Handle empty companies array gracefully
+        let companiesOptions = '';
+        if (this.managementCompanies && this.managementCompanies.length > 0) {
+            companiesOptions = this.managementCompanies.map(company => 
+                `<option value="${this._escape(company)}" ${company === managementCompany ? 'selected' : ''}>${this._escape(company)}</option>`
+            ).join('');
+        }
 
         return `
             <div class="info-section" style="margin-bottom: 24px; background: #fef3c7; padding: 16px; border-radius: 8px; border-left: 4px solid #f59e0b;">
@@ -253,11 +276,15 @@ class ReportModal {
                     <div>
                         <label style="display: block; font-size: 14px; font-weight: bold; margin-bottom: 4px;">Management Company:</label>
                         <input type="text" id="management-company-input" list="management-companies" value="${this._escape(managementCompany)}" 
-                               placeholder="Select or enter company name..."
+                               placeholder="Enter company name..."
                                style="width: 100%; padding: 6px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 14px;">
                         <datalist id="management-companies">
                             ${companiesOptions}
                         </datalist>
+                        ${this.managementCompanies.length === 0 ? 
+                            '<div style="font-size: 12px; color: #6b7280; margin-top: 2px;">No existing companies - type to add new</div>' : 
+                            '<div style="font-size: 12px; color: #6b7280; margin-top: 2px;">Select existing or type new company</div>'
+                        }
                     </div>
                 </div>
                 <div style="margin-top: 16px; display: flex; gap: 8px;">
